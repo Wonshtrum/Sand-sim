@@ -22,12 +22,14 @@ class Env:
 			**kwargs)
 
 		self.bind("Button-1", self.scroll_start)
-		self.bind("Button-3", self.put_pixel)
 		self.bind("B1-Motion", self.scroll_move)
 		self.bind("Button-4", self.zoom)
 		self.bind("Button-5", self.zoom)
 		self.bind("MouseWheel", self.zoom)
 		self.bind("Motion", self.position)
+
+	def add_callback(self, event, callback):
+		self.bind(event, lambda event: callback(*self.position(event)))
 
 	def bind(self, event, callback):
 		self.can.bind(f"<{event}>", callback, add="+")
@@ -38,15 +40,14 @@ class Env:
 			self.label.set(f"({x} ; {y})")
 		return x, y
 
+	def clear(self):
+		self.can.delete("all")
+
 	def draw(self, x, y, w=1, h=1, **kwargs):
 		if "width" not in kwargs:
 			kwargs["width"] = 0
 		ox, oy, s = self.ox, self.oy, self.scale
 		return self.can.create_rectangle(x*s, y*s, (x+w)*s, (y+h)*s, **kwargs)
-
-	def put_pixel(self, event):
-		x, y = self.position(event)
-		self.draw(x, y, fill="red")
 
 	def zoom(self, event):
 		direction = event.num == 4 or event.delta>0
