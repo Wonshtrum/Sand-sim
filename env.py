@@ -12,6 +12,7 @@ class Env:
 		self.ox = 0
 		self.oy = 0
 		self.label = label
+		self.key_bound = []
 
 		self.can = tk.Canvas(
 			win,
@@ -27,9 +28,13 @@ class Env:
 		self.bind("Button-5", self.zoom)
 		self.bind("MouseWheel", self.zoom)
 		self.bind("Motion", self.position)
+		self.win.bind("<Key>", self.key_dispatcher)
 
-	def add_callback(self, event, callback):
+	def bind_mouse(self, event, callback):
 		self.bind(event, lambda event: callback(*self.position(event)))
+
+	def bind_key(self, key, callback):
+		self.key_bound.append((key, callback))
 
 	def bind(self, event, callback):
 		self.can.bind(f"<{event}>", callback, add="+")
@@ -39,6 +44,12 @@ class Env:
 		if self.label is not None:
 			self.label.set(f"({x} ; {y})")
 		return x, y
+
+	def key_dispatcher(self, event):
+		self.label.set(f"Key: {event.keycode}")
+		for key, callback in self.key_bound:
+			if key == event.keycode:
+				callback()
 
 	def clear(self):
 		self.can.delete("all")
