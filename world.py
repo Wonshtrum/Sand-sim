@@ -56,14 +56,18 @@ class World:
 
 	def set_cell(self, x, y, cell):
 		chunk = self.get_chunk(x, y)
-		chunk.mat[x%self.w][y%self.w] = cell
-		chunk.empty = False
+		nx = x%self.w
+		ny = y%self.w
+		chunk.mat[nx][ny] = cell
+		chunk.bound(nx, ny)
 
-	def update(self):
+	def update(self, callback=None):
+		if callback is None:
+			callback = lambda cell: None
 		self.current_update += 1
-		chunks = list(self.chunks.values())
+		chunks = sorted(self.chunks.values(), key=lambda chunk: -chunk.y)
 		for chunk in chunks:
-			chunk.update(self)
+			chunk.update(self, callback)
 			if chunk.empty:
 				del self.chunks[(chunk.x, chunk.y)]
 
@@ -71,6 +75,7 @@ class World:
 		ctx.clear()
 		for chunk in self.chunks.values():
 			chunk.draw(ctx)
+		ctx.update()
 
 
 class Chunk:
@@ -78,22 +83,40 @@ class Chunk:
 		self.x = x
 		self.y = y
 		self.w = w
+		self.reset_bound()
 		self.mat = [[None]*w for _ in range(w)]
 		self.empty = True
 
-	def update(self, world):
+	def update(self, world, callback):
 		ox = self.x*self.w
 		oy = self.y*self.w
-		self.empty = True
-		for x in range(self.w):
-			for y in range(self.w):
+		mx, my, Mx, My = self.mx, self.my, self.Mx, self.My
+		self.reset_bound()
+		for y in range(My, my-1, -1):
+			for x in range(mx, Mx+1):
 				cell = self.mat[x][y]
 				if cell is not None:
-					self.empty = False
 					xy = cell._update(ox+x, oy+y, world)
 					if xy is not None:
 						self.mat[x][y] = None
 						world.set_cell(*xy, cell)
+						callback(cell)
+					else:
+						self.bound(x, y)
+
+	def reset_bound(self):
+		self.empty = True
+		self.mx = self.w
+		self.my = self.w
+		self.Mx = 0
+		self.My = 0
+
+	def bound(self, x, y):
+		self.empty = False
+		self.mx = min(self.mx, x)
+		self.my = min(self.my, y)
+		self.Mx = max(self.Mx, x)
+		self.My = max(self.My, y)
 
 	def draw(self, ctx):
 		ox = self.x*self.w
@@ -103,4 +126,5 @@ class Chunk:
 				cell = self.mat[x][y]
 				if cell is not None:
 					ctx.draw(ox+x, oy+y, fill=cell.COLOR)
+		ctx.draw(ox+self.mx, oy+self.my, self.Mx-self.mx+1, self.My-self.my+1, fill="", outline="red", width=3)
 		ctx.draw(ox, oy, self.w, self.w, fill="", outline="lime", width=3)

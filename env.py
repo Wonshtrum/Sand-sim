@@ -43,6 +43,9 @@ class Env:
 	def clear(self):
 		self.can.delete("all")
 
+	def update(self):
+		self.can.update()
+
 	def draw(self, x, y, w=1, h=1, **kwargs):
 		if "width" not in kwargs:
 			kwargs["width"] = 0
