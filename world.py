@@ -3,6 +3,7 @@ from random import randrange
 
 class Cell:
 	COLOR = "#FFF"
+	need_update = False
 	def __init__(self):
 		self.last_update = None
 
@@ -28,6 +29,7 @@ class Stone(Cell):
 
 class Sand(Cell):
 	COLOR = "#FF8"
+	need_update = True
 	def update(self, x, y, world):
 		free = lambda cell: cell is None or (isinstance(cell, Water) and cell.last_update != world.current_update)
 		if free(world.get_cell(x, y+1, False)):
@@ -46,6 +48,7 @@ class Sand(Cell):
 
 class Water(Cell):
 	COLOR = "#55F"
+	need_update = True
 	def update(self, x, y, world):
 		if world.get_cell(x, y+1) is None:
 			return x, y+1
@@ -95,7 +98,7 @@ class World:
 		nx = x%self.w
 		ny = y%self.w
 		chunk.mat[nx][ny] = cell
-		chunk.bound(nx, ny)
+		chunk.bound(nx, ny, cell)
 
 	def free_cells(self, predicate, *positions):
 		if predicate is None:
@@ -109,7 +112,7 @@ class World:
 		chunks = sorted(self.chunks.values(), key=lambda chunk: -chunk.y)
 		for chunk in chunks:
 			chunk.update(self, callback)
-			if chunk.empty:
+			if chunk.empty and chunk.verify():
 				del self.chunks[(chunk.x, chunk.y)]
 
 	def draw(self, ctx, debug=True):
@@ -129,6 +132,8 @@ class Chunk:
 		self.empty = True
 
 	def update(self, world, callback):
+		if not self.need_update:
+			return
 		ox = self.x*self.w
 		oy = self.y*self.w
 		mx, my, Mx, My = self.mx, self.my, self.Mx, self.My
@@ -142,26 +147,43 @@ class Chunk:
 						old = world.get_cell(*xy, False)
 						if old is not None:
 							old.last_update = world.current_update
-							self.bound(x, y)
+							self.bound(x, y, old)
 						self.mat[x][y] = old
 						world.set_cell(*xy, cell)
 						callback(cell)
 					else:
-						self.bound(x, y)
+						self.bound(x, y, cell)
+
+	def verify(self):
+		for x in range(self.w):
+			for y in range(self.w):
+				if self.mat[x][y] is not None:
+					self.empty = False
+		return self.empty
 
 	def reset_bound(self):
+		self.need_update = False
 		self.empty = True
 		self.mx = self.w
 		self.my = self.w
 		self.Mx = 0
 		self.My = 0
+		return
+		self.mx = 0
+		self.my = 0
+		self.Mx = self.w-1
+		self.My = self.w-1
 
-	def bound(self, x, y):
+	def bound(self, x, y, cell):
+		self.need_update = True
+		if cell is None:
+			return
 		self.empty = False
-		self.mx = min(self.mx, x)
-		self.my = min(self.my, y)
-		self.Mx = max(self.Mx, x)
-		self.My = max(self.My, y)
+		if cell.need_update:
+			self.mx = min(self.mx, x)
+			self.my = min(self.my, y)
+			self.Mx = max(self.Mx, x)
+			self.My = max(self.My, y)
 
 	def draw(self, ctx, world, debug):
 		ox = self.x*self.w
@@ -172,5 +194,8 @@ class Chunk:
 				if cell is not None:
 					ctx.draw(ox+x, oy+y, fill=cell.COLOR)
 		if debug:
-			ctx.draw(ox+self.mx, oy+self.my, self.Mx-self.mx+1, self.My-self.my+1, fill="", outline="red", width=3)
-			ctx.draw(ox, oy, self.w, self.w, fill="", outline="lime", width=3)
+			if self.need_update:
+				ctx.draw(ox+self.mx, oy+self.my, self.Mx-self.mx+1, self.My-self.my+1, fill="", outline="blue", width=3)
+				ctx.draw(ox, oy, self.w, self.w, fill="", outline="lime", width=3)
+			else:
+				ctx.draw(ox, oy, self.w, self.w, fill="", outline="red", width=3)

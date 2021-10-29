@@ -1,7 +1,7 @@
 import tkinter as tk
 from env import Env
 from world import World, Air, Stone, Sand, Water
-from time import sleep
+from time import sleep, time
 
 
 def pre_params(f, *args, **kwargs):
@@ -35,11 +35,14 @@ def change_update(x, y):
 
 
 UPDATE = False
+DEBUG = False
 def loop():
 	if UPDATE:
+		start = time()
 		world.update(update_cell)
-	world.draw(env, False)
-	env.win.after(10, loop)
+		env.win.title(f"{int((time()-start)*1000)}ms")
+	world.draw(env, DEBUG)
+	env.win.after(1, loop)
 
 
 win = tk.Tk()
