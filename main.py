@@ -15,7 +15,7 @@ def update_cell(cell):
 	old = cell.COLOR
 	cell.COLOR = "red"
 	world.draw(env)
-	sleep(0.01)
+	sleep(0.05)
 	cell.COLOR = old
 
 

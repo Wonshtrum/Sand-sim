@@ -31,7 +31,8 @@ class Sand(Cell):
 	COLOR = "#FF8"
 	need_update = True
 	def update(self, x, y, world):
-		free = lambda cell: cell is None or (isinstance(cell, Water) and cell.last_update != world.current_update)
+		free_water = lambda cell: isinstance(cell, Water) and cell.last_update != world.current_update
+		free = lambda cell: cell is None or free_water(cell)
 		if free(world.get_cell(x, y+1, False)):
 			return x, y+1
 		left  = world.free_cells(free, (x-1, y+1), (x-1, y))
@@ -40,9 +41,9 @@ class Sand(Cell):
 			if randrange(2):
 				return x-1, y+1
 			return x+1, y+1
-		elif left:
+		if left:
 			return x-1, y+1
-		elif right:
+		if right:
 			return x+1, y+1
 
 
@@ -50,27 +51,39 @@ class Water(Cell):
 	COLOR = "#55F"
 	need_update = True
 	def update(self, x, y, world):
+		free = lambda cell: cell is None
+		free_or_water = lambda cell: cell is None or isinstance(cell, Water)
+		free_sand = lambda cell: isinstance(cell, Sand) and cell.last_update != world.current_update
 		if world.get_cell(x, y+1) is None:
 			return x, y+1
-		left_up  = world.get_cell(x-1, y, False) is None
-		right_up = world.get_cell(x+1, y, False) is None
-		left  = left_up  and world.get_cell(x-1, y+1, False) is None
-		right = right_up and world.get_cell(x+1, y+1, False) is None
+		left_up  = world.get_cell(x-1, y, False)
+		right_up = world.get_cell(x+1, y, False)
+		left  = world.get_cell(x-1, y+1, False)
+		right = world.get_cell(x+1, y+1, False)
+
+		if free_sand(right_up) and free_or_water(left_up) and free_or_water(left):
+			return x+1, y
+		if free_sand(left_up) and free_or_water(right_up) and free_or_water(right):
+			return x-1, y
+		left_up  = free(left_up)
+		right_up = free(right_up)
+		left  = left_up and free(left)
+		right = right_up and free(right)
 		if left and right:
 			if randrange(2):
 				return x-1, y
 			return x+1, y+1
-		elif left:
+		if left:
 			return x-1, y+1
-		elif right:
+		if right:
 			return x+1, y+1
 		if left_up and right_up:
 			if randrange(2):
 				return x-1, y
 			return x+1, y
-		elif left_up:
+		if left_up:
 			return x-1, y
-		elif right_up:
+		if right_up:
 			return x+1, y
 
 
@@ -168,11 +181,6 @@ class Chunk:
 		self.my = self.w
 		self.Mx = 0
 		self.My = 0
-		return
-		self.mx = 0
-		self.my = 0
-		self.Mx = self.w-1
-		self.My = self.w-1
 
 	def bound(self, x, y, cell):
 		self.need_update = True
