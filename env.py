@@ -11,13 +11,15 @@ class Env:
 		self.scale = 2**scale
 		self.ox = 0
 		self.oy = 0
+		self.width = col*self.scale
+		self.height = row*self.scale
 		self.label = label
-		self.key_bound = []
+		self.key_bound = {}
 
 		self.can = tk.Canvas(
 			win,
-			width=col*self.scale,
-			height=row*self.scale,
+			width=self.width,
+			height=self.height,
 			xscrollincrement=1,
 			yscrollincrement=1,
 			**kwargs)
@@ -29,12 +31,16 @@ class Env:
 		self.bind("MouseWheel", self.zoom)
 		self.bind("Motion", self.position)
 		self.win.bind("<Key>", self.key_dispatcher)
+		self.background = kwargs.get("bg", "black")
 
 	def bind_mouse(self, event, callback):
 		self.bind(event, lambda event: callback(*self.position(event)))
 
 	def bind_key(self, key, callback):
-		self.key_bound.append((key, callback))
+		if key in self.key_bound:
+			self.key_bound[key].append(callback)
+		else:
+			self.key_bound[key] = [callback]
 
 	def bind(self, event, callback):
 		self.can.bind(f"<{event}>", callback, add="+")
@@ -47,12 +53,13 @@ class Env:
 
 	def key_dispatcher(self, event):
 		self.label.set(f"Key: {event.keycode}")
-		for key, callback in self.key_bound:
-			if key == event.keycode:
-				callback()
+		#print(event.keycode)
+		for callback in self.key_bound.get(event.keycode, []):
+			callback()
 
 	def clear(self):
 		self.can.delete("all")
+		#self.can.create_rectangle(self.ox, self.oy, self.ox+self.width+1, self.oy+self.height+1, fill=self.background, width=0)
 
 	def update(self):
 		self.can.update()

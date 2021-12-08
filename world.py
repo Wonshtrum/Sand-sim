@@ -50,6 +50,9 @@ class Sand(Cell):
 class Water(Cell):
 	COLOR = "#55F"
 	need_update = True
+	def __init__(self):
+		super().__init__()
+		self.last_dir = randrange(2)
 	def update(self, x, y, world):
 		free = lambda cell: cell is None
 		free_or_water = lambda cell: cell is None or isinstance(cell, Water)
@@ -70,20 +73,24 @@ class Water(Cell):
 		left  = left_up and free(left)
 		right = right_up and free(right)
 		if left and right:
-			if randrange(2):
+			if self.last_dir:
 				return x-1, y
 			return x+1, y+1
 		if left:
+			self.last_dir = 1
 			return x-1, y+1
 		if right:
+			self.last_dir = 0
 			return x+1, y+1
 		if left_up and right_up:
-			if randrange(2):
+			if self.last_dir:
 				return x-1, y
 			return x+1, y
 		if left_up:
+			self.last_dir = 1
 			return x-1, y
 		if right_up:
+			self.last_dir = 0
 			return x+1, y
 
 
@@ -132,7 +139,7 @@ class World:
 		ctx.clear()
 		for chunk in self.chunks.values():
 			chunk.draw(ctx, self, debug)
-		ctx.update()
+		#ctx.update()
 
 
 class Chunk:
