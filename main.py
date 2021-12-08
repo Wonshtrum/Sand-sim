@@ -3,6 +3,7 @@ from env import Env
 from world import World, Air, Stone, Sand, Water
 from time import sleep, time
 from PIL import Image
+from sys import argv
 from io import BytesIO
 from os import urandom
 import re
@@ -37,6 +38,7 @@ def save_video():
 	if len(save_frame.frames) < 2:
 		return
 	img, *imgs = save_frame.frames
+	save_frame.frames = []
 	fileName = f"videos/{urandom(16).hex()}.gif"
 	print(fileName)
 	img.save(fp=fileName, format='GIF', append_images=imgs, save_all=True, optimize=True, duration=20, loop=0)
@@ -67,6 +69,11 @@ def change_block(block):
 def change_update(x, y):
 	global UPDATE
 	UPDATE = not UPDATE
+def change_debug():
+	global DEBUG
+	DEBUG = not DEBUG
+	if not UPDATE:
+		world.draw(env, DEBUG)
 def change_save():
 	global SAVE
 	if SAVE:
@@ -97,12 +104,15 @@ env = Env(win, 100, 50, 4, txt, bg="black")
 env.can.pack()
 label.pack()
 
-world = World(8)
-for x in range(5,20):
-	for y in range(5,10):
-		world.set_cell(x, y, Sand())
-for x in range(25):
-	world.set_cell(x, 15, Stone())
+if len(argv) > 1:
+	world = World.load(argv[1])
+else:
+	world = World(8)
+	for x in range(5,20):
+		for y in range(5,10):
+			world.set_cell(x, y, Sand())
+	for x in range(25):
+		world.set_cell(x, 15, Stone())
 
 env.bind_mouse("Button-3", add_cell)
 env.bind_mouse("B3-Motion", add_cell)
@@ -114,6 +124,8 @@ for key, block in zip(keys, blocks):
 	env.bind_key(key, pre_params(change_block, block))
 env.bind_key(65, step)
 env.bind_key(39, change_save)
+env.bind_key(40, change_debug)
+env.bind_key(52, pre_params(world.save, "saves/save.sand"))
 
 world.draw(env, DEBUG)
 loop()

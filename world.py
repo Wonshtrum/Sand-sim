@@ -1,4 +1,5 @@
 from random import randrange
+import struct
 
 
 class Cell:
@@ -73,14 +74,14 @@ class Water(Cell):
 		left  = left_up and free(left)
 		right = right_up and free(right)
 		if left and right:
-			if self.last_dir:
-				return x-1, y
+			if randrange(2):
+				return x-1, y+1
 			return x+1, y+1
 		if left:
-			self.last_dir = 1
+			self.last_dir = randrange(2)
 			return x-1, y+1
 		if right:
-			self.last_dir = 0
+			self.last_dir = randrange(2)
 			return x+1, y+1
 		if left_up and right_up:
 			if self.last_dir:
@@ -95,6 +96,7 @@ class Water(Cell):
 
 
 class World:
+	MAGIC = b"\x5a\xd0\x01"
 	def __init__(self, w):
 		self.w = w
 		self.chunks = {}
@@ -140,6 +142,82 @@ class World:
 		for chunk in self.chunks.values():
 			chunk.draw(ctx, self, debug)
 		#ctx.update()
+
+	def save(self, path):
+		to_id_map = {
+			type(None): 0,
+			Stone: 1,
+			Sand: 2,
+			Water: 3
+		}
+		to_id = lambda cell: to_id_map[type(cell)]
+		bits = 8
+		max_count = 8
+		buffer = self.MAGIC
+		buffer += struct.pack("h", self.w)
+		for (x, y), chunk in self.chunks.items():
+			chunk.empty = True
+			if chunk.verify():
+				continue
+			buffer += struct.pack("2h", x, y)
+			last = to_id(chunk.mat[0][0])
+			count = 0
+			for line in chunk.mat:
+				for cell in line:
+					current = to_id(cell)
+					if current == last:
+						count += 1
+					else:
+						while count > 0:
+							buffer += struct.pack("2B", last, min(max_count, count)-1)
+							count -= max_count
+						last = current
+						count = 1
+			buffer += struct.pack("2B", last, count-1)
+		with open(path, "wb") as f:
+			f.write(buffer)
+		print(f"Successfully saved to: {path}")
+
+	def load(path):
+		to_cell_map = {
+			0: Air,
+			1: Stone,
+			2: Sand,
+			3: Water
+		}
+		with open(path, "rb") as f:
+			buffer = f.read()
+		if not buffer.startswith(World.MAGIC):
+			raise ValueError("Magic number doesn't match, wrong file type.")
+		try:
+			cursor = len(World.MAGIC)
+			w, = struct.unpack_from("h", buffer, cursor)
+			world = World(w)
+			size = w*w
+			cursor += 2
+			while cursor < len(buffer):
+				x, y = struct.unpack_from("2h", buffer, cursor)
+				ox, oy = x*w, y*w
+				cursor += 4
+				count = 0
+				chunk = Chunk(x, y, w)
+				while count < size:
+					cell, c = struct.unpack_from("2B", buffer, cursor)
+					for i in range(count, count+c+1):
+						chunk.mat[i//w][i%w] = to_cell_map[cell]()
+					cursor += 2
+					count += c+1
+				chunk.reset_bound()
+				chunk.need_update = True
+				chunk.mx = 0
+				chunk.my = 0
+				chunk.Mx = w-1
+				chunk.My = w-1
+				world.chunks[(x, y)] = chunk
+			return world
+		except Exception as e:
+			print(e)
+			raise Exception("Wrong file format")
 
 
 class Chunk:

@@ -53,13 +53,12 @@ class Env:
 
 	def key_dispatcher(self, event):
 		self.label.set(f"Key: {event.keycode}")
-		#print(event.keycode)
 		for callback in self.key_bound.get(event.keycode, []):
 			callback()
 
 	def clear(self):
 		self.can.delete("all")
-		#self.can.create_rectangle(self.ox, self.oy, self.ox+self.width+1, self.oy+self.height+1, fill=self.background, width=0)
+		self.can.create_rectangle(self.ox, self.oy, self.ox+self.width+1, self.oy+self.height+1, fill=self.background, width=0)
 
 	def update(self):
 		self.can.update()
